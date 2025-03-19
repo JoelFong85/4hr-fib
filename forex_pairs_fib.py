@@ -3,16 +3,19 @@ import oandapyV20.endpoints.instruments as instruments
 import pandas as pd
 import ta
 from constants.trend_types import TrendType
+import os
+from dotenv import load_dotenv
 
-# OANDA API Credentials (Replace with your credentials)
-API_KEY = ""
+load_dotenv()
+API_KEY = os.getenv("OANDA_API_KEY")
+if not API_KEY:
+    raise ValueError("Missing OANDA API Key. Make sure to set OANDA_API_KEY in your .env file.")
+
 INSTRUMENT = "AUD_CHF"  # Change this to the forex pair you want
 
-# Initialize OANDA API Client
 client = oandapyV20.API(access_token=API_KEY)
 
 
-# Function to fetch OHLCV data from OANDA
 def fetch_candlestick_data(instrument, granularity="H4", count=200):
     params = {"count": count, "granularity": granularity}
     r = instruments.InstrumentsCandles(instrument=instrument, params=params)
@@ -35,13 +38,11 @@ def fetch_candlestick_data(instrument, granularity="H4", count=200):
     return df
 
 
-# Function to calculate 15-period EMA
 def calculate_ema(df, period=15):
     df["ema_15"] = ta.trend.ema_indicator(df["close"], window=period)
     return df
 
 
-# Function to identify trends with a minimum of 3 consecutive candles
 def identify_trends(df):
     trend_list = []
     latest_trend = None
@@ -62,7 +63,7 @@ def identify_trends(df):
         # print(f"current index: {i + 1}")
         # print(f"candle count: {candle_count}")
         # print(f"trend list count {len(trend_list)}")
-        print(f"Timestamp: {timestamp}, Open: {open_price}, Close: {close_price}, EMA(15): {ema_price}")
+        # print(f"Timestamp: {timestamp}, Open: {open_price}, Close: {close_price}, EMA(15): {ema_price}")
 
         # Determine current trend
         if open_price >= ema_price and close_price >= ema_price:
@@ -146,16 +147,12 @@ def identify_trends(df):
 
 
 def main():
-    # print(f"Fetching data for {INSTRUMENT}...")
     df = fetch_candlestick_data(INSTRUMENT, granularity="H4", count=200)
 
-    # print("Calculating EMA...")
     df = calculate_ema(df)
 
-    # print("Identifying trends...")
     trends_df = identify_trends(df)
 
-    # print("\nIdentified Trends:")
     print(trends_df)
 
 
