@@ -51,6 +51,16 @@ def identify_trends(df):
     max_swing_price_time = None
     start_time = None
 
+    def append_trend(end_index):
+        trend_list.append({
+            "trend": latest_trend,
+            "start_time": start_time,
+            "end_time": df["timestamp"].iloc[end_index],
+            "max_swing_price": max_swing_price,
+            "max_swing_price_time": max_swing_price_time,
+            "candle_count": candle_count
+        })
+
     for i in range(len(df)):
         open_price = df["open"].iloc[i]
         close_price = df["close"].iloc[i]
@@ -72,14 +82,7 @@ def identify_trends(df):
             current_trend = TrendType.DOWNTREND.value
         else:
             if latest_trend is not None:
-                trend_list.append({
-                    "trend": latest_trend,
-                    "start_time": start_time,
-                    "end_time": df["timestamp"].iloc[i - 1],
-                    "max_swing_price": max_swing_price,
-                    "max_swing_price_time": max_swing_price_time,
-                    "candle_count": candle_count
-                })
+                append_trend(i - 1)
             candle_count = 0
             latest_trend = None
             continue  # Skip to next candle
@@ -100,15 +103,7 @@ def identify_trends(df):
         else:
             # If a new trend starts, add the previous one (if it exists)
             if latest_trend is not None:
-                # print("Appending trend")
-                trend_list.append({
-                    "trend": latest_trend,
-                    "start_time": start_time,
-                    "end_time": df["timestamp"].iloc[i - 1],
-                    "max_swing_price": max_swing_price,
-                    "max_swing_price_time": max_swing_price_time,
-                    "candle_count": candle_count
-                })
+                append_trend(i - 1)
 
             # Start a new trend
             latest_trend = current_trend
@@ -119,14 +114,7 @@ def identify_trends(df):
 
     # Append last trend after loop
     if latest_trend is not None:
-        trend_list.append({
-            "trend": latest_trend,
-            "start_time": start_time,
-            "end_time": df["timestamp"].iloc[-1],
-            "max_swing_price": max_swing_price,
-            "max_swing_price_time": max_swing_price_time,
-            "candle_count": candle_count
-        })
+        append_trend(len(df) - 1)
 
     df_trends = pd.DataFrame(trend_list)
 
