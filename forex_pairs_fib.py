@@ -89,18 +89,15 @@ def identify_trends(df):
 
             # Update max swing price
             if latest_trend == TrendType.UPTREND.value:
-                # Joel comment - use high price instead of close price
-                if max_swing_price is None or close_price > max_swing_price:
-                    max_swing_price = close_price
+                if max_swing_price is None or high_price > max_swing_price:
+                    max_swing_price = high_price
                     max_swing_price_time = timestamp
             elif latest_trend == TrendType.DOWNTREND.value:
-                # Joel comment - use low price instead of close price
-                if max_swing_price is None or close_price < max_swing_price:
-                    max_swing_price = close_price
+                if max_swing_price is None or low_price < max_swing_price:
+                    max_swing_price = low_price
                     max_swing_price_time = timestamp
 
         else:
-            # print("latest_trend != current_trend")
             # If a new trend starts, add the previous one (if it exists)
             if latest_trend is not None:
                 # print("Appending trend")
@@ -117,12 +114,11 @@ def identify_trends(df):
             latest_trend = current_trend
             start_time = timestamp
             candle_count = 1
-            max_swing_price = close_price  # Joel comment - this should be high price for uptrend / low price for downtrend
+            max_swing_price = high_price if current_trend == "uptrend" else low_price
             max_swing_price_time = timestamp
 
     # Append last trend after loop
     if latest_trend is not None:
-        # print("Append last trend after loop")
         trend_list.append({
             "trend": latest_trend,
             "start_time": start_time,
@@ -132,7 +128,6 @@ def identify_trends(df):
             "candle_count": candle_count
         })
 
-    # Convert to DataFrame
     df_trends = pd.DataFrame(trend_list)
 
     # Remove trends with less than 3 candles
