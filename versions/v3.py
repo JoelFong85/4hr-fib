@@ -1,22 +1,29 @@
-# Fixed issues from v1
-# - removing single candles from being counted in a trend
-# - removed candles whose bodies are intersecting with EMA line
+# Fixed issues from v2
+# - remove oanda credentials
+# - remove unnecessary logs
+# - for max swing price, use highs / lows instead of close price
+# - improve on the code for appending to trend_list
+# - combine consecutive uptrends / downtrends
+
 
 import oandapyV20
 import oandapyV20.endpoints.instruments as instruments
 import pandas as pd
 import ta
 from constants.trend_types import TrendType
+import os
+from dotenv import load_dotenv
 
-# OANDA API Credentials (Replace with your credentials)
-API_KEY = ""
-INSTRUMENT = "AUD_CHF"
+load_dotenv()
+API_KEY = os.getenv("OANDA_API_KEY")
+if not API_KEY:
+    raise ValueError("Missing OANDA API Key. Make sure to set OANDA_API_KEY in your .env file.")
 
-# Initialize OANDA API Client
+INSTRUMENT = "AUD_CHF"  # Change this to the forex pair you want
+
 client = oandapyV20.API(access_token=API_KEY)
 
 
-# Function to fetch OHLCV data from OANDA
 def fetch_candlestick_data(instrument, granularity="H4", count=200):
     params = {"count": count, "granularity": granularity}
     r = instruments.InstrumentsCandles(instrument=instrument, params=params)
@@ -39,13 +46,11 @@ def fetch_candlestick_data(instrument, granularity="H4", count=200):
     return df
 
 
-# Function to calculate 15-period EMA
 def calculate_ema(df, period=15):
     df["ema_15"] = ta.trend.ema_indicator(df["close"], window=period)
     return df
 
 
-# Function to identify trends with a minimum of 3 consecutive candles
 def identify_trends(df):
     trend_list = []
     latest_trend = None
@@ -54,9 +59,21 @@ def identify_trends(df):
     max_swing_price_time = None
     start_time = None
 
+    def append_trend(end_index):
+        trend_list.append({
+            "trend": latest_trend,
+            "start_time": start_time,
+            "end_time": df["timestamp"].iloc[end_index],
+            "max_swing_price": max_swing_price,
+            "max_swing_price_time": max_swing_price_time,
+            "candle_count": candle_count
+        })
+
     for i in range(len(df)):
         open_price = df["open"].iloc[i]
         close_price = df["close"].iloc[i]
+        high_price = df["high"].iloc[i]
+        low_price = df["low"].iloc[i]
         ema_price = df["ema_15"].iloc[i]
         timestamp = df["timestamp"].iloc[i]
 
@@ -64,80 +81,49 @@ def identify_trends(df):
         # print(f"current index: {i + 1}")
         # print(f"candle count: {candle_count}")
         # print(f"trend list count {len(trend_list)}")
-        print(f"Timestamp: {timestamp}, Open: {open_price}, Close: {close_price}, EMA(15): {ema_price}")
+        # print(f"Timestamp: {timestamp}, Open: {open_price}, Close: {close_price}, EMA(15): {ema_price}")
 
         # Determine current trend
         if open_price >= ema_price and close_price >= ema_price:
-            # print("uptrend")
             current_trend = TrendType.UPTREND.value
         elif open_price <= ema_price and close_price <= ema_price:
-            # print("downtrend")
             current_trend = TrendType.DOWNTREND.value
         else:
-            # print("no trend")
             if latest_trend is not None:
-                trend_list.append({
-                    "trend": latest_trend,
-                    "start_time": start_time,
-                    "end_time": df["timestamp"].iloc[i - 1],
-                    "max_swing_price": max_swing_price,
-                    "max_swing_price_time": max_swing_price_time,
-                    "candle_count": candle_count
-                })
+                append_trend(i - 1)
             candle_count = 0
             latest_trend = None
             continue  # Skip to next candle
 
         if latest_trend == current_trend:
-            # print("latest_trend == current_trend")
             candle_count += 1
 
             # Update max swing price
             if latest_trend == TrendType.UPTREND.value:
-                # Joel comment - use high price instead of close price
-                if max_swing_price is None or close_price > max_swing_price:
-                    max_swing_price = close_price
+                if max_swing_price is None or high_price > max_swing_price:
+                    max_swing_price = high_price
                     max_swing_price_time = timestamp
             elif latest_trend == TrendType.DOWNTREND.value:
-                # Joel comment - use low price instead of close price
-                if max_swing_price is None or close_price < max_swing_price:
-                    max_swing_price = close_price
+                if max_swing_price is None or low_price < max_swing_price:
+                    max_swing_price = low_price
                     max_swing_price_time = timestamp
 
         else:
-            # print("latest_trend != current_trend")
             # If a new trend starts, add the previous one (if it exists)
             if latest_trend is not None:
-                # print("Appending trend")
-                trend_list.append({
-                    "trend": latest_trend,
-                    "start_time": start_time,
-                    "end_time": df["timestamp"].iloc[i - 1],
-                    "max_swing_price": max_swing_price,
-                    "max_swing_price_time": max_swing_price_time,
-                    "candle_count": candle_count
-                })
+                append_trend(i - 1)
 
             # Start a new trend
             latest_trend = current_trend
             start_time = timestamp
             candle_count = 1
-            max_swing_price = close_price  # Joel comment - this should be high price for uptrend / low price for downtrend
+            max_swing_price = high_price if current_trend == "uptrend" else low_price
             max_swing_price_time = timestamp
 
     # Append last trend after loop
     if latest_trend is not None:
-        # print("Append last trend after loop")
-        trend_list.append({
-            "trend": latest_trend,
-            "start_time": start_time,
-            "end_time": df["timestamp"].iloc[-1],
-            "max_swing_price": max_swing_price,
-            "max_swing_price_time": max_swing_price_time,
-            "candle_count": candle_count
-        })
+        append_trend(len(df) - 1)
 
-    # Convert to DataFrame
     df_trends = pd.DataFrame(trend_list)
 
     # Remove trends with less than 3 candles
@@ -151,19 +137,50 @@ def identify_trends(df):
     return df_trends
 
 
-# Main function
+def merge_consecutive_trends(df_trends):
+    if len(df_trends) <= 1:
+        return df_trends
+
+    merged_list = []
+    tracked_trend = df_trends.iloc[0].copy()
+
+    for i in range(1, len(df_trends)):
+        current = df_trends.iloc[i]
+
+        if current["trend"] == tracked_trend["trend"]:
+            tracked_trend["end_time"] = current["end_time"]
+            tracked_trend["candle_count"] += current["candle_count"]
+
+            if (
+                    (tracked_trend["trend"] == TrendType.UPTREND.value
+                     and
+                     float(current["max_swing_price"]) > float(tracked_trend["max_swing_price"]))
+                    or
+                    (tracked_trend["trend"] == TrendType.DOWNTREND.value
+                     and
+                     float(current["max_swing_price"]) < float(tracked_trend["max_swing_price"]))
+            ):
+                tracked_trend["max_swing_price"] = current["max_swing_price"]
+                tracked_trend["max_swing_price_time"] = current["max_swing_price_time"]
+
+        else:
+            merged_list.append(tracked_trend)
+            tracked_trend = current.copy()
+
+    merged_list.append(tracked_trend)
+    return pd.DataFrame(merged_list).reset_index(drop=True)
+
+
 def main():
-    # print(f"Fetching data for {INSTRUMENT}...")
     df = fetch_candlestick_data(INSTRUMENT, granularity="H4", count=200)
 
-    # print("Calculating EMA...")
     df = calculate_ema(df)
 
-    # print("Identifying trends...")
     trends_df = identify_trends(df)
 
-    # print("\nIdentified Trends:")
-    print(trends_df)
+    merged_trends_df = merge_consecutive_trends(trends_df)
+
+    print(merged_trends_df)
 
 
 if __name__ == "__main__":

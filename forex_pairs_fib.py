@@ -129,6 +129,40 @@ def identify_trends(df):
     return df_trends
 
 
+def merge_consecutive_trends(df_trends):
+    if len(df_trends) <= 1:
+        return df_trends
+
+    merged_list = []
+    tracked_trend = df_trends.iloc[0].copy()
+
+    for i in range(1, len(df_trends)):
+        current = df_trends.iloc[i]
+
+        if current["trend"] == tracked_trend["trend"]:
+            tracked_trend["end_time"] = current["end_time"]
+            tracked_trend["candle_count"] += current["candle_count"]
+
+            if (
+                    (tracked_trend["trend"] == TrendType.UPTREND.value
+                     and
+                     float(current["max_swing_price"]) > float(tracked_trend["max_swing_price"]))
+                    or
+                    (tracked_trend["trend"] == TrendType.DOWNTREND.value
+                     and
+                     float(current["max_swing_price"]) < float(tracked_trend["max_swing_price"]))
+            ):
+                tracked_trend["max_swing_price"] = current["max_swing_price"]
+                tracked_trend["max_swing_price_time"] = current["max_swing_price_time"]
+
+        else:
+            merged_list.append(tracked_trend)
+            tracked_trend = current.copy()
+
+    merged_list.append(tracked_trend)
+    return pd.DataFrame(merged_list).reset_index(drop=True)
+
+
 def main():
     df = fetch_candlestick_data(INSTRUMENT, granularity="H4", count=200)
 
@@ -136,7 +170,9 @@ def main():
 
     trends_df = identify_trends(df)
 
-    print(trends_df)
+    merged_trends_df = merge_consecutive_trends(trends_df)
+
+    print(merged_trends_df)
 
 
 if __name__ == "__main__":
