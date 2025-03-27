@@ -1,3 +1,11 @@
+# Improvements since v3
+# - calculation of whether most recent candle crossed the 75% fib levels of any swing high / low pairs
+
+# Things to improve for v4
+# - re-organise code into proper modules / classes
+# - remove MAX_LIST_LENGTH, just do comparison of all peaks / valleys
+
+
 import oandapyV20
 import oandapyV20.endpoints.instruments as instruments
 import pandas as pd
