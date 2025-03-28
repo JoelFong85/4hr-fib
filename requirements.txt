@@ -1,4 +1,5 @@
 oandapyv20==0.7.2
 pandas==2.2.3
 python-dotenv[cli]==1.1.0
+requests>=2.0.0
 ta==0.11.0
