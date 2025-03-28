@@ -8,9 +8,10 @@ Activate python env:
 
 Install dependencies:
 
-```pip install oandapyV20 pandas ta```
+```pip install -r requirements.txt```
 
+python-dotenv[cli] package will be installed 
 
-Run script:
+You can then run script with the main function you require:
 
-```python forex_pairs_fib.py```
+```dotenv run -- python strategies/four_hr/main.py```

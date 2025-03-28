@@ -1,0 +1,38 @@
+import os
+from dotenv import load_dotenv
+import oandapyV20
+import oandapyV20.endpoints.instruments as instruments
+import pandas as pd
+
+load_dotenv()
+API_KEY = os.getenv("OANDA_API_KEY")
+if not API_KEY:
+    raise ValueError("Missing OANDA API Key. Make sure to set OANDA_API_KEY in your .env file.")
+
+client = oandapyV20.API(access_token=API_KEY)
+
+
+def fetch_candlestick_data(instrument, granularity="H4", count=200):
+    params = {"count": count, "granularity": granularity}
+    r = instruments.InstrumentsCandles(instrument=instrument, params=params)
+    client.request(r)
+
+    candles = r.response['candles']
+
+    df = pd.DataFrame([
+        {
+            "timestamp": c["time"],
+            "open": float(c["mid"]["o"]),
+            "high": float(c["mid"]["h"]),
+            "low": float(c["mid"]["l"]),
+            "close": float(c["mid"]["c"])
+        }
+        for c in candles if c["complete"]
+    ])
+
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    return df
+
+
+def get_latest_candle(df, n=1):
+    return df.iloc[-n].to_dict()
