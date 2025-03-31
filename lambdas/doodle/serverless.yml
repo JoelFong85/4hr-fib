@@ -1,0 +1,66 @@
+service: trading-alert-bot
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: python3.10
+  region: us-east-1
+  environment:
+    S3_BUCKET: trade-alert-bucket
+    TELEGRAM_TOKEN: ${ssm:/telegram/token}
+    DYNAMODB_TABLE: TradeSetups
+
+functions:
+  monitorPairs:
+    handler: handler/monitor_pairs.main
+    events:
+      - schedule: cron(0 0,4,8,12,16,20 ? * MON-FRI *) # Every 4 hrs
+
+  analyzePair:
+    handler: handler/analyze_pair.main
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - TradeSetupQueue
+              - Arn
+
+  sendTelegram:
+    handler: handler/send_telegram.main
+    events:
+      - stream:
+          type: dynamodb
+          arn:
+            Fn::GetAtt:
+              - TradeSetupsTable
+              - StreamArn
+
+resources:
+  Resources:
+    TradeSetupsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: TradeSetups
+        AttributeDefinitions:
+          - AttributeName: pair
+            AttributeType: S
+          - AttributeName: timestamp
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pair
+            KeyType: HASH
+          - AttributeName: timestamp
+            KeyType: RANGE
+        StreamSpecification:
+          StreamViewType: NEW_IMAGE
+        BillingMode: PAY_PER_REQUEST
+
+    TradeSetupQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: trade-setup-queue
+
+    TradeImageBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: trade-alert-bucket
