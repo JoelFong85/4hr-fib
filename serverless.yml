@@ -63,18 +63,21 @@ provider:
 functions:
   hello:
     handler: handler.hello
-      #    The following are a few example events you can configure
-      #    NOTE: Please make sure to change your handler code to work with those events
-      #    Check the event documentation for details
-      #    events: # uncomment
+    #    The following are a few example events you can configure
+    #    NOTE: Please make sure to change your handler code to work with those events
+    #    Check the event documentation for details
+    events:
       #      - httpApi:
       #          path: /users/create
       #          method: get
       #      - websocket: $connect
-    #      - s3: ${env:BUCKET}
-#      - schedule: # uncomment
-#          rate: cron(5 1,5,9,13,17,21 ? * MON-FRI *) # uncomment
-#          enabled: false # uncomment
+      #      - s3: ${env:BUCKET}
+      - schedule:
+          # Trigger every 4 hours, 5 mins after the start of the hour so that we have the previous candle has totally closed. Only during trading hours
+          # Forex trading hours (start - Sunday 21:00 UTC | end - Friday 17:00 UTC)
+          # EventBridge timing is in UTC
+          rate: cron(5 1,5,9,13,17,21 ? * MON-FRI *)
+          enabled: false
 #      - sns: greeter-topic
 #      - stream: arn:aws:dynamodb:region:XXXXXX:table/foo/stream/1970-01-01T00:00:00.000
 #      - alexaSkill: amzn1.ask.skill.xx-xx-xx-xx
