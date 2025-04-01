@@ -53,7 +53,17 @@ provider:
 #    variable1: value1
 
 # you can add packaging information here
-#package:
+# update this before deploying main strategy
+package:
+  patterns:
+    - '!./.venv/**'
+    - '!./venv/**'
+    - '!./__pycache__/**'
+    - '!./.DS_Store'
+    - '!./versions/**'
+    - '!./lambdas/doodle/**'
+    - '!./README.md'
+    - '!./node_modules/**'
 #  patterns:
 #    - '!exclude-me.py'
 #    - '!exclude-me-dir/**'
