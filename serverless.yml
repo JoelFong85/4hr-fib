@@ -26,31 +26,41 @@ provider:
   runtime: python3.11
   region: ap-southeast-1
 
-# you can overwrite defaults here
-#  stage: dev
-#  region: us-east-1
+  # you can overwrite defaults here
+  #  stage: dev
+  #  region: us-east-1
 
-# you can add statements to the Lambda function's IAM Role here
-#  iam:
-#    role:
-#      statements:
-#        - Effect: "Allow"
-#          Action:
-#            - "s3:ListBucket"
-#          Resource: { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ServerlessDeploymentBucket" } ] ]  }
-#        - Effect: "Allow"
-#          Action:
-#            - "s3:PutObject"
-#          Resource:
-#            Fn::Join:
-#              - ""
-#              - - "arn:aws:s3:::"
-#                - "Ref" : "ServerlessDeploymentBucket"
-#                - "/*"
+  # you can add statements to the Lambda function's IAM Role here
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+          Resource:
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/CurrencyPairs
+  #  iam:
+  #    role:
+  #      statements:
+  #        - Effect: "Allow"
+  #          Action:
+  #            - "s3:ListBucket"
+  #          Resource: { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ServerlessDeploymentBucket" } ] ]  }
+  #        - Effect: "Allow"
+  #          Action:
+  #            - "s3:PutObject"
+  #          Resource:
+  #            Fn::Join:
+  #              - ""
+  #              - - "arn:aws:s3:::"
+  #                - "Ref" : "ServerlessDeploymentBucket"
+  #                - "/*"
 
-# you can define service wide environment variables here
-#  environment:
-#    variable1: value1
+  # you can define service wide environment variables here
+  environment:
+    CURRENCY_PAIRS_TABLE_NAME: CurrencyPairs
 
 # you can add packaging information here
 # update this before deploying main strategy
@@ -119,21 +129,19 @@ functions:
 #      variable2: value2
 
 # you can add CloudFormation resource templates here
-# uncomment start
-#resources:
-#  Resources:
-#    CurrencyPairs:
-#      Type: AWS::DynamoDB::Table
-#      Properties:
-#        TableName: CurrencyPairs
-#        AttributeDefinitions:
-#          - AttributeName: pair
-#            AttributeType: S
-#        KeySchema:
-#          - AttributeName: pair
-#            KeyType: HASH
-#        BillingMode: PAY_PER_REQUEST
-# uncomment end
+resources:
+  Resources:
+    CurrencyPairs:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: CurrencyPairs
+        AttributeDefinitions:
+          - AttributeName: pair
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pair
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
 #resources:
 #  Resources:
 #    NewResource:
