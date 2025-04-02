@@ -40,7 +40,7 @@ provider:
             - dynamodb:GetItem
             - dynamodb:PutItem
           Resource:
-            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/CurrencyPairs
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:custom.currencyPairsTableName}
   #  iam:
   #    role:
   #      statements:
@@ -60,7 +60,7 @@ provider:
 
   # you can define service wide environment variables here
   environment:
-    CURRENCY_PAIRS_TABLE_NAME: CurrencyPairs
+    CURRENCY_PAIRS_TABLE_NAME: ${self:custom.currencyPairsTableName}
 
 # you can add packaging information here
 # update this before deploying main strategy
@@ -79,6 +79,9 @@ package:
 #    - '!exclude-me-dir/**'
 #    - include-me.py
 #    - include-me-dir/**
+
+custom:
+  currencyPairsTableName: CurrencyPairs
 
 functions:
   hello:
@@ -134,7 +137,7 @@ resources:
     CurrencyPairs:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: CurrencyPairs
+        TableName: ${self:custom.currencyPairsTableName}
         AttributeDefinitions:
           - AttributeName: pair
             AttributeType: S
