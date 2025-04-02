@@ -4,6 +4,12 @@ frameworkVersion: "3"
 
 custom:
   currencyPairsTableName: CurrencyPairs
+  analysisQueueUrl:
+    Ref: AnalyzePairQueue
+  analysisQueueArn:
+    Fn::GetAtt:
+      - AnalyzePairQueue
+      - Arn
 
 provider:
   name: aws
@@ -22,6 +28,11 @@ provider:
           Resource:
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:custom.currencyPairsTableName}
 
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+          Resource: ${self:custom.analysisQueueArn}
+
   environment:
     CURRENCY_PAIRS_TABLE_NAME: ${self:custom.currencyPairsTableName}
 
@@ -37,8 +48,8 @@ package:
     - '!./node_modules/**'
 
 functions:
-  hello:
-    handler: handler.hello
+  currencyPairTriggerer:
+    handler: lambdas/currency_pair_triggerer.run
     events:
       - schedule:
           # Trigger every 4 hours, 5 mins after the start of the hour so that we have the previous candle has totally closed. Only during trading hours
@@ -46,6 +57,9 @@ functions:
           # EventBridge timing is in UTC
           rate: cron(5 1,5,9,13,17,21 ? * MON-FRI *)
           enabled: false
+    environment:
+      CURRENCY_PAIRS_TABLE_NAME: ${self:custom.currencyPairsTableName}
+      FIB_ANALYSIS_LAMBDA_QUEUE_URL: ${self:custom.analysisQueueUrl}
 
 resources:
   Resources:
@@ -60,3 +74,8 @@ resources:
           - AttributeName: pair
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
+
+    AnalyzePairQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: AnalyzePairQueue
