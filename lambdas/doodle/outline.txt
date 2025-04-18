@@ -1,7 +1,7 @@
 trading-alert-bot/
 ├── handler/                      # Your actual Python code
 │   ├── monitor_pairs.py
-│   ├── analyze_pair.py
+│   ├── analyse_pair.py
 │   └── send_telegram.py
 ├── serverless.yml                # Infra definition
 ├── requirements.txt

@@ -16,8 +16,8 @@ functions:
     events:
       - schedule: cron(0 0,4,8,12,16,20 ? * MON-FRI *) # Every 4 hrs
 
-  analyzePair:
-    handler: handler/analyze_pair.main
+  analysePair:
+    handler: handler/analyse_pair.main
     events:
       - sqs:
           arn:
